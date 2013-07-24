@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 var gift= require("gift"), 
   isodate= require("isodate"),
   sax= require("sax"),
@@ -29,7 +30,6 @@ var argv= optimist
 	describe: "Whether or not to push"
   })
   .check(function(v){
-	console.log("hi?",v)
 	if(v._.length != 1){
 		throw "Unexpected number of arguments"
 	}
@@ -64,7 +64,7 @@ function commit(){
 	});
 	var commit= hackMemoize(repo.commit,["Timestamp of the day"]),
 	  push= hackMemoize(repo.remote_push,["origin"])
-	var rv= repo.add(filename).then(commit)
+	var rv= repo.add(argv.f).then(commit)
 	if(argv.p)
 		rv= rv.then(push)
 	return rv
