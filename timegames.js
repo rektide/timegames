@@ -1,6 +1,6 @@
-var sax= require("sax"),
+var gift= require("gift"), 
   isodate= require("isodate"),
-  git= require("git"),
+  sax= require("sax"),
   http= require("http"),
   https= require("https"),
   Q= require("q")
@@ -27,13 +27,24 @@ function writeTimestamp(val){
 	return _writeFile(filename,val)
 }
 
-var _repo= Q.denodify(git.Repo)
-git.Repo.prototype._add= Q.denodify(git.Repo.prototype.add)
 function commit(){
-	return _repo(".",{}).then(function(repo){
-		repo._add(filename)
+	var repo= gift(".")
+	["add","commit","remote_push"].forEach(function(slot){
+		repo[slot]= Q.nbind(repo[slot], repo)
 	})
+	var commit= hackMemoize(repo.commit,["Timestamp of the day"]),
+	  push= hackMemoize(repo.remote_push,["origin"])
+	repo.add(filename).then(commit).then(push)
 }
+
+///////
+// GO:
+getLastPublished().then(ifTimeElapsed).then(getTimestamp).then(writeTimestamp).then(commit).fail(function(err){
+	console.error("Failed! ",err)
+}).done()
+
+////////////
+// UTILITY:
 
 function getHttpOrHttps(url){
 	if(url.substring(0,5) == "https")
@@ -93,10 +104,11 @@ function hackMemoize(fn,args){
 		try{
 			var rv= fn.apply(null,args)
 		}catch(ex){
-			args[unfound]= undefined
 			throw ex
+		}finally{
+			if(unfound != -1)
+				args[unfound]= undefined
 		}
-		args[unfound]= undefined
 		return rv
 	}
 }
