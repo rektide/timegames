@@ -1,0 +1,13 @@
+{
+  "name": "timegames",
+  "version": "1.0.0",
+  "description": "",
+  "main": "timegame.js",
+  "repository": "http://github.com/rektide/timegames",
+  "author": "rektide de la faye <rektide@voodoowarez.com>",
+  "license": "X.org Preferred",
+  "dependencies": {
+    "q": "~0.9.6",
+    "sax": "~0.5.4"
+  }
+}
