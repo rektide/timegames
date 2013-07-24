@@ -58,7 +58,7 @@ function writeTimestamp(val){
 }
 
 function commit(){
-	var repo= gift(".");
+	var repo= gift(argv.r);
 	["add","commit","remote_push"].forEach(function(slot){
 		repo[slot]= Q.nbind(repo[slot], repo)
 	});
