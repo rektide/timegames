@@ -1,6 +1,7 @@
 var gift= require("gift"), 
   isodate= require("isodate"),
   sax= require("sax"),
+  fs= require("fs"),
   http= require("http"),
   https= require("https"),
   Q= require("q")
@@ -22,26 +23,24 @@ function getTimestamp(){
 	return getSax("http://publictimestamp.org/rest/v1.0/publictimestamp-rest-v1.0.pl?pt=getlatestptb").then(_firstSha256)
 }
 
-var _writeFile= Q.denodify(fs.writeFile)
+var _writeFile= Q.denodeify(fs.writeFile)
 function writeTimestamp(val){
 	return _writeFile(filename,val)
 }
 
 function commit(){
-	var repo= gift(".")
+	var repo= gift(".");
 	["add","commit","remote_push"].forEach(function(slot){
 		repo[slot]= Q.nbind(repo[slot], repo)
-	})
+	});
 	var commit= hackMemoize(repo.commit,["Timestamp of the day"]),
 	  push= hackMemoize(repo.remote_push,["origin"])
-	repo.add(filename).then(commit).then(push)
+	return repo.add(filename).then(commit).then(push)
 }
 
 ///////
 // GO:
-getLastPublished().then(ifTimeElapsed).then(getTimestamp).then(writeTimestamp).then(commit).fail(function(err){
-	console.error("Failed! ",err)
-}).done()
+getLastPublished().then(ifTimeElapsed()).then(getTimestamp).then(writeTimestamp).then(commit).fail(fail).done()
 
 ////////////
 // UTILITY:
@@ -87,7 +86,7 @@ function getFirstMatchedTagValue(saxParser,tag){
 	return defer.promise
 }
 
-function hackMemoize(fn,args){
+function hackMemoize(fn,args,thisArg){
 	if(!(args instanceof Array))
 		throw "expected array"
 	return function(val){
@@ -102,25 +101,29 @@ function hackMemoize(fn,args){
 			}
 		}
 		try{
-			var rv= fn.apply(null,args)
+			return fn.apply(thisArg,args)
 		}catch(ex){
 			throw ex
 		}finally{
 			if(unfound != -1)
 				args[unfound]= undefined
 		}
-		return rv
 	}
 }
 
 function ifTimeElapsed(earliestAllowed){
 	if(!earliestAllowed){
-		earliestAllowed= Date()
+		earliestAllowed= new Date()
 		earliestAllowed.setDate(earliestAllowed.getDate()-1)
 	}
 	return function(d){
-		if(d <= earliestAllowed)
-			return d
-		throw "Time is too recent"
+		//if(d <= earliestAllowed)
+		//	return d
+		//throw "Time is too recent"
 	}
+}
+
+function fail(err){
+	console.error("Failed!",err)
+	process.exit(1)
 }
