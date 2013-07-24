@@ -1,16 +1,16 @@
 var sax= require("sax"),
   isodate= require("isodate"),
+  git= require("git"),
   http= require("http"),
   https= require("https"),
   Q= require("q")
 
-//console.log("WTF IZS",sax)
-
-if(process.argv.length != 3){
+if(process.argv.length < 3){
 	console.error("Incorrect arguments")
 }
 
 var name= process.argv[2]
+  filename= process.argv[3]|| "timestamp"
 
 var _firstPublished= hackMemoize(getFirstMatchedTagValue,[,"published"])
 function getLastPublished(){
@@ -22,10 +22,17 @@ function getTimestamp(){
 	return getSax("http://publictimestamp.org/rest/v1.0/publictimestamp-rest-v1.0.pl?pt=getlatestptb").then(_firstSha256)
 }
 
-function writeTimestamp(){
+var _writeFile= Q.denodify(fs.writeFile)
+function writeTimestamp(val){
+	return _writeFile(filename,val)
 }
 
+var _repo= Q.denodify(git.Repo)
+git.Repo.prototype._add= Q.denodify(git.Repo.prototype.add)
 function commit(){
+	return _repo(".",{}).then(function(repo){
+		repo._add(filename)
+	})
 }
 
 function getHttpOrHttps(url){
@@ -91,5 +98,17 @@ function hackMemoize(fn,args){
 		}
 		args[unfound]= undefined
 		return rv
+	}
+}
+
+function ifTimeElapsed(earliestAllowed){
+	if(!earliestAllowed){
+		earliestAllowed= Date()
+		earliestAllowed.setDate(earliestAllowed.getDate()-1)
+	}
+	return function(d){
+		if(d <= earliestAllowed)
+			return d
+		throw "Time is too recent"
 	}
 }
