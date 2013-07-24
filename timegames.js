@@ -1,7 +1,9 @@
 var sax= require("sax"),
   isodate= require("isodate"),
-  http= require("http"),
+  http= require("https"),
   Q= require("q")
+
+//console.log("WTF IZS",sax)
 
 if(process.argv.length != 3){
 	console.error("Incorrect arguments")
@@ -10,17 +12,16 @@ if(process.argv.length != 3){
 var name= process.argv[2]
 
 function getLastPublished(){
-	var sax= sax.parser(true),
+	var saxParser= sax.parser(true),
 	  publishedDefer= Q.defer()
-	sax.onopentag= function(node){
-		if(node == "published"){
-			sax.ontext= function(t){
-				sax.close()
+	saxParser.onopentag= function(node){
+		if(node.name == "published"){
+			saxParser.ontext= function(t){
 				try{
 					var time= isodate(t)
-					httpDefer.resolve(t)
+					publishedDefer.resolve(time)
 				}catch(ex){
-					httpDefer.reject(ex)
+					publishedDefer.reject(ex)
 				}
 			}
 		}
@@ -28,10 +29,14 @@ function getLastPublished(){
 	var req= http.request("https://github.com/"+name+".atom",function(res){
 		res.setEncoding("utf8")
 		res.on("data",function(chunk){
-			sax.write(chunk)
+			saxParser.write(chunk)
 		})
 	})
-	return publishDefer.promise
+	req.on("error",function(err){
+		publishedDefer.reject(err)
+	})
+	req.end()
+	return publishedDefer.promise
 }
 
 function getTimestamp(){
