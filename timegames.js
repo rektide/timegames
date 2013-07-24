@@ -6,13 +6,42 @@ var gift= require("gift"),
   https= require("https"),
   Q= require("q")
 
-if(process.argv.length < 3){
-	console.error("Incorrect arguments")
-}
+/////////
+// ARGS:
 
-var name= process.argv[2]
-  filename= process.argv[3]|| "timestamp"
+var optimist= require("optimist")
+var argv= optimist
+  .usage("Check a github feed and commit a Public Timestamp if inactive for more than a day\nUsage: $0 github-username")
+  .options("r",{
+	alias: "repo",
+	default: ".",
+	describe: "Repository to commit to"
+  })
+  .options("f",{
+	alias: "file",
+	default: "timestamp",
+	describe: "Timestamp file to log into"
+  })
+  .options("p",{
+	alias: "push",
+	boolean: true,
+	default: true,
+	describe: "Whether or not to push"
+  })
+  .check(function(v){
+	console.log("hi?",v)
+	if(v._.length != 1){
+		throw "Unexpected number of arguments"
+	}
+  })
+  .argv
+var name= argv._[0]
 
+
+////////////////////
+// PRIMARY PROGRAM:
+
+	
 var _firstPublished= hackMemoize(getFirstMatchedTagValue,[,"published"])
 function getLastPublished(){
 	return getSax("https://github.com/"+name+".atom").then(_firstPublished).then(isodate)
@@ -25,7 +54,7 @@ function getTimestamp(){
 
 var _writeFile= Q.denodeify(fs.writeFile)
 function writeTimestamp(val){
-	return _writeFile(filename,val)
+	return _writeFile(argv.f,val)
 }
 
 function commit(){
@@ -35,12 +64,17 @@ function commit(){
 	});
 	var commit= hackMemoize(repo.commit,["Timestamp of the day"]),
 	  push= hackMemoize(repo.remote_push,["origin"])
-	return repo.add(filename).then(commit).then(push)
+	var rv= repo.add(filename).then(commit)
+	if(argv.p)
+		rv= rv.then(push)
+	return rv
 }
+
 
 ///////
 // GO:
 getLastPublished().then(ifTimeElapsed()).then(getTimestamp).then(writeTimestamp).then(commit).fail(fail).done()
+
 
 ////////////
 // UTILITY:
