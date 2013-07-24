@@ -151,9 +151,9 @@ function ifTimeElapsed(earliestAllowed){
 		earliestAllowed.setDate(earliestAllowed.getDate()-1)
 	}
 	return function(d){
-		//if(d <= earliestAllowed)
-		//	return d
-		//throw "Time is too recent"
+		if(d <= earliestAllowed)
+			return d
+		throw "Time is too recent"
 	}
 }
 
